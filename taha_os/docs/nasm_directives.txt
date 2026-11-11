@@ -1,0 +1,20 @@
+db - define byte (1 byte, 8 bits)
+dw - define word (2 bytes, 16 bits)
+dd - define doubleword (4 bytes, 32 bits)
+dq - define quadword (8 bytes, 64 bits)
+
+resb - reserve byte
+resw - reserve word
+resd - reserve doubleword
+resq - reserve quadword
+
+
+to reserve memory
+	- my_buffer resb 64    ->    zero/garbage values   
+	- my_buffer times 64 db 0    ->    zero values
+	
+equ
+	- used to define a name to memory location
+	- it does not allocate memory
+	- it does not create storage
+	- it is just a label for an address

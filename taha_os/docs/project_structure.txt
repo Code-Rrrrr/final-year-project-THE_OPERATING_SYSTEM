@@ -1,0 +1,7 @@
+stage_one_bootloader.asm - bin
+
+stage_two_bootloader.asm - bin
+
+kernel_entry.asm - elf
+
+kernel.c - elf

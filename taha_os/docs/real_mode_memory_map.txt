@@ -1,0 +1,42 @@
+16 bit real mode memory
+
+	- real mode does not use flat memory addressing
+	- real mode uses segment : offset addressing
+	- physical address = (segment × 16) + offset
+	- segment = 16 bit (0x0000 to 0xffff, 0 to 65535)
+	- offset = 16 bit (0x0000 to 0xffff, 0 to 65535)
+	
+	- if segment = 0 and offset = 0 to 65535 (0x0000 to 0xffff)
+		then physical address = 0 to 65535 (0x0000 to 0xffff)
+		64 KB of physical memory
+
+    +-------+
+	|       | 
+	| CS:IP |
+	| SS:SP |
+	| DS:SI |
+	| ES:DI |
+	|       |
+	+-------+
+
+
+bootloader
+	- bootloader is loaded at 0x7c00
+	- (7C00)16 = (31744)10
+	- bootloader takes 512 bytes
+	- bootloader ends at 0x7dff
+	- (7DFF)16 = (32255)10
+
+sector 0 - 512 byte
+	0x7c00	31744	bootloader start
+	0x7dff	32255	bootloader end
+
+sector 1 - 512 byte
+	0x7e00	32256	start
+	0x7fff	32767	end
+	
+sector 2 - 512 byte
+	0x8000	32768	start
+	0x81ff	33279	end
+	
+	

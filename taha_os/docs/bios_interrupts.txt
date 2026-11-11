@@ -1,0 +1,83 @@
+INT 0x13 , AH=0x42
+
+	- used to read sectors from disk using LBA
+	- replaces old CHS AH=0x2
+	- works only in modern BIOS
+	
+	- uses disk address packet (DAP)
+	- DAP is a 16 byte structure
+	
+	- format of DAP (size are in bytes)
+		
+		size	meaning
+		1		size of DAP (16 bytes, 10h)
+		1		reserved , always 0
+		2		number of sectors to read
+		4		memory buffer (segment:offset), BIOS stores data here after reading from disk 
+		8		starting LBA
+		
+		NOTE
+			- memory buffer size is 4 bytes (32 bits)
+			- 2 bytes offset (low 16 bits)
+			- 2 bytes segment (high 16 bits)
+			- offset comes before segment because x86 is little-endian
+			
+	- steps to read sectors from disk using INT 13h
+	
+		- set proper values in DAP
+		- put DAP in memory
+		- set DS:SI to point to DAP in memory
+		- set AH = 0x42
+		- set DL = "drive number", typically 80h (first hard disk)
+		- call INT 0x13
+			
+	- carry flag = 0 -> read operation completed sucessfully
+	- carry flag = 1 -> there is error during read operation
+	- AH = 0 -> sucess
+	- AH = non zero -> error
+	
+	NOTE
+		- at boot time BIOS already loads DL = boot disk number
+		- so, do not overwrite DL unless necessary
+		- safe version -> mov DL, DL
+		
+		
+=======================================================================================================================
+
+int 0x10 (video services)
+ 
+int 0x10, AH = 0xf 
+	- get current video mode and state
+	- bios returns
+		AL = current video mode number
+		AH = number of character column on screen (text width)
+		BH = active display page
+		
+		
+
+		
+
+
+
+
+=======================================================================================================================
+
+
+=======================================================================================================================
+
+
+=======================================================================================================================
+
+
+=======================================================================================================================
+
+
+=======================================================================================================================
+
+
+=======================================================================================================================
+
+
+=======================================================================================================================
+
+

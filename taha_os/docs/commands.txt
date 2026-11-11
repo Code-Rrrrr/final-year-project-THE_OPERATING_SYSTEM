@@ -1,0 +1,27 @@
+nasm -f bin home.asm -o home.bin
+
+qemu-system-x86_64 -m 16M -drive format=raw,file=home.bin
+
+
+=============================
+
+qemu-system-x86_64 -m 16M -drive format=raw,file=os.bin
+
+
+nasm -f bin stage_one_bootloader.asm -o stage_one_bootloader.bin
+
+
+nasm -f bin stage_two_bootloader.asm -o stage_two_bootloader.bin
+
+
+nasm -f elf64 kernel_entry.asm -o kernel_entry.o
+
+
+clang --target=x86_64-elf -ffreestanding -fno-stack-protector -fno-pic -mno-red-zone -mcmodel=kernel -Wall -Wextra -c kernel.c -o kernel.o
+
+
+ld.lld -T linker.ld -nostdlib -static kernel_entry.o kernel.o -o kernel.elf
+
+
+ld.lld -Ttext 0x10000 --image-base=0x10000 -e kernel_entry --oformat=binary -nostdlib kernel_entry.o kernel.o -o kernel.bin
+

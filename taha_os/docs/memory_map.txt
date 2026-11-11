@@ -1,0 +1,26 @@
+
+stage 1 bootloader - 512 bytes - 0x7c00
+    
+stage 2 bootloader - 8192 bytes - 0x8000
+
+kernel - 512 bytes - 0x10000
+
+
+16-bit stack - 0x7c00
+
+32-bit stack - 0x80000
+
+64-bit stack - 0x80000
+
+
+PML4 - 0x1000
+PDPT - 0x2000
+PD   - 0x3000
+PT   - 0x4000
+
+
+nasm -f bin stage_two_bootloader.asm -o stage_two_bootloader.bin
+
+qemu-system-x86_64 -m 16M -drive format=raw,file=os.bin
+
+

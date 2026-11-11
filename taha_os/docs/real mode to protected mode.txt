@@ -1,0 +1,571 @@
+
+how to switch from 16 bit real mode to 32 bit protected mode
+	
+	- cpu starts in 16 bit real mode
+	
+	- disable interrupts
+	
+	- enable the A20 line
+			in original 8086 memory addresses are wrapped at 1MB
+			to access memory beyond 1MB A20 line must be enabled
+			protected mode requires access beyond 1MB
+	
+	- create a global descriptor table (GDT)
+			GDT defines memory segments in protected mode
+			
+	- place the GDT at known memory location
+	
+	- load a cpu register that points to GDT
+	
+	- enable protected mode bit in cpu control register
+			cpu has a special control register (CR0)
+			CR0 is a 32 bit register 
+			set PE (protection enable) bit (bit 0) in CR0 register
+			now CPU enters protected mode
+			
+	- perform a far control transfer / far jump
+			it flushes intruction pipeline (because CPU still executes old prefetch queue instructions from real mode)
+			it loads new code segment selector from
+			it forces cpu into protected mode execution context
+			it activates protected mode properly
+			
+	- prepare segments registers (CS, DS, ES, SS)
+			in real mode segment registers hold segment values
+			in protected mode they become selectors (indexes into GDT)
+			plan which selector will point to which segment (code, data, etc.)
+	
+			
+	- point stack register to a protected mode memory region	
+
+
+---------------------------------------------------
+
+cpu starts in 16 bit real mode
+enable A20 line
+setup GDT (global descriptor table)
+load GDT
+enter 32 bit protected mode
+enable PAE
+setup page tables
+load CR3
+enable long mode
+enable paging
+far jump to 64 bit mode
+
+
+=================================================
+
+GDT = [ Descriptor 0, Descriptor 1, Descriptor 2, ... ]
+
+each descriptor is 8 bytes (64 bits) long
+
+a single descriptor describes one memory segment
+
+each 8 bytes is arranged like this
+
+	Bits:
+	  0-15    : Segment Limit (low part)
+	  16-31   : Base Address (low part)
+	  32-39   : Base Address (middle part)
+	  40-47   : Access byte
+	  48-51   : Segment Limit (high part)
+	  52-55   : Flags
+	  56-63   : Base Address (high part)
+	  
+base address - starting address of memory segment
+limit - size of segment
+access byte - tells it is code or data, read write execute permission, kernel or user level 
+
+=======================================
+
+1. Steps to enter Protected Mode
+The sequence is:
+
+Disable interrupts.
+
+Enable A20.
+
+Load the GDT using LGDT.
+
+Set bit 0 of CR0 (Protected Enable).
+
+Perform a far jump to flush the instruction pipeline.
+
+Initialize segment registers.
+
+Set up the stack.
+=======================================
+
+1. Long Mode transition sequence
+The CPU must perform these operations in order:
+
+Check whether the processor supports Long Mode.
+
+Ensure A20 is enabled.
+
+Create a GDT with a 64-bit code descriptor.
+
+Create PML4, PDPT, and page directory structures.
+
+Enable PAE in CR4.
+
+Load the PML4 physical address into CR3.
+
+Set EFER.LME using MSR 0xC0000080.
+
+Enable paging and protected mode in CR0.
+
+Far jump to the 64-bit code segment.
+
+Initialize 64-bit registers and stack.
+=======================================
+
+[ ] 1. Establish the boot environment
+    Know the load address, execution mode, memory layout, and initial register assumptions.
+[ ] 2. Initialize the real-mode stack
+    Set SS:SP and avoid memory overlap.
+[ ] 3. Disable maskable interrupts
+    Execute CLI and plan for NMI and exceptions.
+[ ] 4. Check CPUID availability
+    Test the EFLAGS ID bit if supporting older CPUs.
+[ ] 5. Check extended CPUID support
+    Query 0x80000000 and confirm leaf 0x80000001 exists.
+[ ] 6. Check long-mode support
+    Query 0x80000001 and test EDX bit 29.
+[ ] 7. Check additional CPU features
+    Check any features your kernel needs.
+[ ] 8. Enable A20
+    Ensure high memory addresses do not alias low memory.
+[ ] 9. Reserve transition memory
+    Choose addresses for the GDT, page tables, stack, and kernel.
+[ ] 10. Construct the GDT
+    Include a null descriptor, 32-bit code, data, and 64-bit code descriptors.
+[ ] 11. Construct the GDTR descriptor
+    Store the GDT limit and base.
+[ ] 12. Load the GDT
+    Execute LGDT.
+[ ] 13. Ensure paging is disabled
+    Clear CR0.PG if necessary.
+[ ] 14. Enable protected mode
+    Set CR0.PE.
+[ ] 15. Far jump to 32-bit code
+    Reload CS using the 32-bit code selector.
+[ ] 16. Reload data selectors
+    Initialize DS, ES, FS, GS, and SS as appropriate.
+[ ] 17. Initialize the 32-bit stack
+    Set ESP to valid writable memory.
+[ ] 18. Prepare exception handling
+    Install a usable protected-mode IDT and handlers for a robust implementation.
+[ ] 19. Allocate page tables
+    Reserve aligned PML4, PDPT, PD, and PT pages.
+[ ] 20. Clear page tables
+    Initialize all entries to zero.
+[ ] 21. Connect PML4 to PDPT
+    Create the first present, writable entry.
+[ ] 22. Connect PDPT to PD
+    Create the next-level entry.
+[ ] 23. Connect PD to PT
+    Create the next-level entry.
+[ ] 24. Populate PT entries
+    Create the required 4 KiB mappings.
+[ ] 25. Check mapping coverage
+    Map the code, GDT, stack, page tables, and kernel entry as needed.
+[ ] 26. Enable CR4.PAE
+    Set CR4 bit 5.
+[ ] 27. Load CR3
+    Write the physical PML4 address.
+[ ] 28. Read EFER
+    Use RDMSR with ECX = 0xC0000080.
+[ ] 29. Set EFER.LME
+    Set EAX bit 8 while preserving other EFER bits.
+[ ] 30. Write EFER
+    Execute WRMSR.
+[ ] 31. Enable paging
+    Set CR0.PG with CR0.PE already enabled.
+[ ] 32. Enter IA-32e mode
+    The CPU activates long-mode paging and sets EFER.LMA.
+[ ] 33. Far jump to 64-bit code
+    Select the code descriptor with L=1 and D/B=0.
+[ ] 34. Establish 64-bit execution
+    Assemble and execute the target using BITS 64.
+[ ] 35. Initialize 64-bit segments and stack
+    Load appropriate data selectors and set RSP.
+[ ] 36. Install the 64-bit IDT
+    Provide suitable exception and interrupt gates.
+[ ] 37. Transfer to the kernel
+    Jump to the correctly mapped kernel entry point.
+
+=======================================
+
+
+; ==========================================
+; STAGE 2 BOOTLOADER
+; 16-bit -> 32-bit -> 64-bit
+; ==========================================
+
+[BITS 16]
+[ORG 0x8000]
+
+CODE32_SEG equ 0x08
+DATA_SEG   equ 0x10
+CODE64_SEG equ 0x18
+
+
+stage2_start:
+
+    cli
+
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov sp, 0x7C00
+
+    mov [boot_drive], dl
+
+
+; ==========================================
+; LOAD KERNEL USING BIOS
+; ==========================================
+
+load_kernel:
+
+    mov si, kernel_packet
+    mov dl, [boot_drive]
+
+    sti
+    mov ah, 0x42
+    int 0x13
+    cli
+
+    jc disk_error
+
+
+; ==========================================
+; ENABLE A20
+; ==========================================
+
+enable_a20:
+
+    in al, 0x92
+    or al, 00000010b
+    and al, 11111110b
+    out 0x92, al
+
+
+; ==========================================
+; LOAD GDT
+; ==========================================
+
+    cli
+    lgdt [gdt_descriptor]
+
+
+; ==========================================
+; ENTER 32-BIT PROTECTED MODE
+; ==========================================
+
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+
+    jmp CODE32_SEG:protected_mode
+
+
+; ==========================================
+; 32-BIT PROTECTED MODE
+; ==========================================
+
+[BITS 32]
+
+protected_mode:
+
+    ; Initialize segment registers
+
+    mov ax, DATA_SEG
+
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    mov esp, 0x90000
+
+
+; ==========================================
+; CHECK LONG MODE SUPPORT
+; ==========================================
+
+check_long_mode:
+
+    mov eax, 0x80000000
+    cpuid
+
+    cmp eax, 0x80000001
+    jb no_long_mode
+
+    mov eax, 0x80000001
+    cpuid
+
+    bt edx, 29
+    jnc no_long_mode
+
+
+; ==========================================
+; SETUP 4 KB PAGE TABLES
+; ==========================================
+
+    call setup_paging
+
+
+; ==========================================
+; ENABLE PAE
+; ==========================================
+
+    mov eax, cr4
+    or eax, 1 << 5
+    mov cr4, eax
+
+
+; ==========================================
+; LOAD PML4 ADDRESS INTO CR3
+; ==========================================
+
+    mov eax, 0x1000
+    mov cr3, eax
+
+
+; ==========================================
+; ENABLE LONG MODE IN EFER
+; ==========================================
+
+    mov ecx, 0xC0000080
+
+    rdmsr
+
+    or eax, 1 << 8
+
+    wrmsr
+
+
+; ==========================================
+; ENABLE PAGING
+; ==========================================
+
+    mov eax, cr0
+
+    or eax, 1 << 31
+
+    mov cr0, eax
+
+
+; ==========================================
+; FAR JUMP INTO 64-BIT MODE
+; ==========================================
+
+    jmp CODE64_SEG:long_mode_entry
+
+
+no_long_mode:
+
+    cli
+
+.no_mode_halt:
+    hlt
+    jmp .no_mode_halt
+
+
+; ==========================================
+; PAGE TABLE INITIALIZATION
+; ==========================================
+
+setup_paging:
+
+    ; Clear four page-table pages.
+    ; PML4 = 0x1000
+    ; PDPT = 0x2000
+    ; PD   = 0x3000
+    ; PT   = 0x4000
+
+    mov edi, 0x1000
+
+    xor eax, eax
+
+    mov ecx, 4096
+
+    cld
+    rep stosd
+
+
+    ; PML4[0] -> PDPT
+    ; Present + Read/Write
+
+    mov dword [0x1000], 0x2003
+
+
+    ; PDPT[0] -> PD
+
+    mov dword [0x2000], 0x3003
+
+
+    ; PD[0] -> PT
+
+    mov dword [0x3000], 0x4003
+
+
+    ; Map 512 x 4 KiB pages
+    ; Total = 2 MiB
+
+    mov edi, 0x4000
+
+    mov eax, 0x00000003
+
+    mov ecx, 512
+
+
+.map_pages:
+
+    ; Lower 32 bits of PTE
+
+    mov dword [edi], eax
+
+    ; Upper 32 bits of PTE
+
+    mov dword [edi + 4], 0
+
+    ; Next physical page
+
+    add eax, 0x1000
+
+    add edi, 8
+
+    loop .map_pages
+
+    ret
+
+
+; ==========================================
+; 64-BIT LONG MODE
+; ==========================================
+
+[BITS 64]
+
+long_mode_entry:
+
+    ; Initialize data segments
+
+    mov ax, DATA_SEG
+
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+
+    xor eax, eax
+
+    mov fs, ax
+    mov gs, ax
+
+    ; Initialize stack
+
+    mov rsp, 0x90000
+
+    xor rbp, rbp
+
+    ; Clear direction flag
+
+    cld
+
+    ; Call C kernel at 0x10000
+
+    mov rax, 0x10000
+
+    call rax
+
+
+; Kernel returned unexpectedly
+
+.halt:
+
+    cli
+    hlt
+
+    jmp .halt
+
+
+; ==========================================
+; GDT
+; ==========================================
+
+[BITS 16]
+
+align 8
+
+gdt_start:
+
+    ; Null descriptor
+
+    dq 0x0000000000000000
+
+    ; 32-bit code segment
+
+    dq 0x00CF9A000000FFFF
+
+    ; Data segment
+
+    dq 0x00CF92000000FFFF
+
+    ; 64-bit code segment
+
+    dq 0x00AF9A000000FFFF
+
+gdt_end:
+
+
+gdt_descriptor:
+
+    dw gdt_end - gdt_start - 1
+
+    dd gdt_start
+
+
+; ==========================================
+; BIOS DISK DATA
+; ==========================================
+
+boot_drive:
+    db 0
+
+
+kernel_packet:
+
+    db 0x10
+    db 0
+
+    dw 64                 ; 64 sectors
+
+    dw 0x0000             ; Destination offset
+    dw 0x1000             ; Destination segment
+
+    dq 9                  ; Kernel starts at LBA 9
+
+
+; ==========================================
+; DISK ERROR
+; ==========================================
+
+disk_error:
+
+    mov ax, 0x0E45
+    int 0x10
+
+    cli
+
+.error_halt:
+    hlt
+    jmp .error_halt
+
+
+; Stage 2 must occupy exactly 4096 bytes
+
+times 4096 - ($ - $$) db 0

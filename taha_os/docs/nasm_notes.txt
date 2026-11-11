@@ -1,0 +1,48 @@
+
+step 1 -
+	prepare two separate assembly files
+
+		main.asm
+
+			global _start
+			extern hello
+			_start:
+				call hello
+				mov eax, 1
+				int 0x80
+				
+		util.asm
+			
+			global hello
+			hello:
+				; function body
+				ret
+		
+step 2 -
+	assemble both files
+		nasm -f elf32 main.asm -o main.o
+		nasm -f elf32 utils.asm -o utils.o
+		
+step 3 -
+	link them
+		ld -m elf_i386 main.o utils.o -o program
+		
+		
+=================================================
+
+symbol = label / function / variable
+
+global and extern
+	- they are linker directives
+	- they control how symbols are shared between different assembly files
+
+global
+	- export symbol so other files can use it
+	- eg. global my_function
+		it means this function exists here and other files are allowed to call it
+			
+extern
+	- import symbol from another file
+	- eg. extern my_function
+		it means this function is not defined here, it will be provided by another file at link time
+

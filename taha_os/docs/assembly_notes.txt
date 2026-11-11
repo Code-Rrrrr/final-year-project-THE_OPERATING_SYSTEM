@@ -1,0 +1,71 @@
+MOV = Copy.
+
+MOVZX = Copy + fill extra bits with zeros.
+
+MOVSX = Copy + extend the sign bit.
+
+
+IN
+	- read data from a I/O port into an register
+	- IN AX, port
+	
+OUT
+	- send data from a register into an I/O port
+	- OUT port, AX
+	
+	NOTE
+		- typical port number range 0-65535(16 bit)
+		- amount of data transferred by IN and OUT depends on register size
+		- AL -> 8 bit
+		- AX -> 16 bit
+		- EAX -> 32 bit
+		- max is 32 bit , no 64 bit IN/OUT
+		
+LODSB
+	- loads one byte from memory into accumulator register
+	- reads from memory pointed by SI
+	- automatically updates pointer
+	- if director flag (DF) = 0 -> SI is incremented
+	- if DF = 1 -> SI is decremented
+	- to make DF = 0 -> use CLD command
+	- to make DF = 1 -> use STD command
+	
+REP
+	- prefix instruction
+	- causes a string operation instruction to repeat automatically until CX becomes zero
+	- used only with string instruction
+	
+LOOP
+	- control flow instruction
+	- decrements CX register and transfers execution to a label if counter is not zero
+	- used to implement counted loops over a block of instructions
+
+
+SHR
+	- shift logical right
+	- shifts all bits in register or memory operand to right by specified number of positions
+	- inserts 0s on the left (most significant bits)
+		- SHR register, count
+		- SHR AL, 1
+	- specify size when used with memory
+		- SHR size [memory_address], count
+		- SHR byte [num], 1
+		- SHR word [num], 1
+		- SHR dword [num], 1
+		
+		
+SHL - logical shift left
+SHR - logical shift right
+
+SAL - arithmetic left shift
+SAR - arithmetic right shift
+
+ROL - rotate left
+ROR - rotate right
+
+RCL - rotate through carry left
+RCR - rotate through carry right
+
+
+STC - set carry flag 
+CLC - clear carry flag
